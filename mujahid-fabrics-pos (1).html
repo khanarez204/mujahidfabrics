@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes" />
+<title>Mujahid Fabrics · Fintrixity POS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+* { font-family: 'Inter', sans-serif; }
+body { background: #0a0a0c; }
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeUp .25s ease; }
+@keyframes fadeUp { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+.nav-btn.active { background: rgba(255,255,255,0.07); color: #fff; }
+.nav-btn.active .nav-bar { opacity: 1; }
+.custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+.custom-scroll::-webkit-scrollbar-thumb { background: #2a2b31; border-radius: 20px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+@media print {
+    .no-print { display: none !important; }
+    .print-area { display: block !important; }
+    @page { size: A4; margin: 10mm; }
+    html, body { background: #fff !important; }
+    #print-receipt * { page-break-inside: avoid; }
+}
+.print-area { display: none; }
+.bar-fill { transition: height .5s cubic-bezier(.4,0,.2,1); }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=checkbox].chk { accent-color: #ff4d1f; }
+::selection { background: #ff4d1f; color: white; }
+@media (max-width: 640px) {
+    .grid-cols-12 { grid-template-columns: 1fr; }
+    .col-span-8, .col-span-4 { grid-column: span 1; }
+    #pos-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body class="text-slate-100">
+
+<!-- ============ SIDEBAR ============ -->
+<aside class="fixed left-0 top-0 h-screen w-[72px] md:w-[240px] bg-[#111214] border-r border-[#1e1f24] p-3 md:p-4 no-print z-50 flex flex-col items-center md:items-stretch">
+    <div class="flex items-center gap-3 mb-8 px-1 mt-1 w-full justify-center md:justify-start">
+        <div class="w-9 h-9 min-w-9 rounded-xl bg-gradient-to-br from-[#ff8a3d] to-[#ff4519] flex items-center justify-center shadow-lg shadow-orange-900/30">
+            <i data-lucide="zap" class="w-5 h-5 text-white" fill="white"></i>
+        </div>
+        <div class="hidden md:block">
+            <h1 class="text-[15px] font-extrabold tracking-tight text-white leading-none">Mujahid</h1>
+            <p class="text-[9px] uppercase tracking-[0.2em] text-slate-500 font-bold mt-0.5">Fabrics POS</p>
+        </div>
+    </div>
+
+    <p class="hidden md:block text-[9px] uppercase tracking-[0.2em] text-slate-600 font-bold px-3 mb-2">Menu</p>
+    <nav class="flex flex-col space-y-1 w-full items-center md:items-stretch">
+        <button onclick="showTab('overview')" data-tab="overview" class="nav-btn active w-full relative flex items-center justify-center md:justify-start gap-3 px-3 py-2.5 rounded-xl transition-all font-semibold text-slate-400 hover:text-white hover:bg-white/5 text-[13px]">
+            <span class="nav-bar absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-[#ff4d1f] opacity-0 hidden md:block"></span>
+            <i data-lucide="layout-grid" class="w-[18px] h-[18px]"></i><span class="hidden md:inline">Overview</span>
+        </button>
+        <button onclick="showTab('pos')" data-tab="pos" class="nav-btn w-full relative flex items-center justify-center md:justify-start gap-3 px-3 py-2.5 rounded-xl transition-all font-semibold text-slate-400 hover:text-white hover:bg-white/5 text-[13px]">
+            <span class="nav-bar absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-[#ff4d1f] opacity-0 hidden md:block"></span>
+            <i data-lucide="shopping-cart" class="w-[18px] h-[18px]"></i><span class="hidden md:inline">Billing</span>
+        </button>
+        <button onclick="showTab('invoices')" data-tab="invoices" class="nav-btn w-full relative flex items-center justify-center md:justify-start gap-3 px-3 py-2.5 rounded-xl transition-all font-semibold text-slate-400 hover:text-white hover:bg-white/5 text-[13px]">
+            <span class="nav-bar absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-[#ff4d1f] opacity-0 hidden md:block"></span>
+            <i data-lucide="receipt" class="w-[18px] h-[18px]"></i><span class="hidden md:inline">Invoices</span>
+        </button>
+        <button onclick="showTab('inventory')" data-tab="inventory" class="nav-btn w-full relative flex items-center justify-center md:justify-start gap-3 px-3 py-2.5 rounded-xl transition-all font-semibold text-slate-400 hover:text-white hover:bg-white/5 text-[13px]">
+            <span class="nav-bar absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-[#ff4d1f] opacity-0 hidden md:block"></span>
+            <i data-lucide="package" class="w-[18px] h-[18px]"></i><span class="hidden md:inline">Stock</span>
+        </button>
+        <button onclick="showTab('ledger')" data-tab="ledger" class="nav-btn w-full relative flex items-center justify-center md:justify-start gap-3 px-3 py-2.5 rounded-xl transition-all font-semibold text-slate-400 hover:text-white hover:bg-white/5 text-[13px]">
+            <span class="nav-bar absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-[#ff4d1f] opacity-0 hidden md:block"></span>
+            <i data-lucide="bar-chart-3" class="w-[18px] h-[18px]"></i><span class="hidden md:inline">Finance</span>
+        </button>
+        <button onclick="showTab('expenses')" data-tab="expenses" class="nav-btn w-full relative flex items-center justify-center md:justify-start gap-3 px-3 py-2.5 rounded-xl transition-all font-semibold text-slate-400 hover:text-white hover:bg-white/5 text-[13px]">
+            <span class="nav-bar absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-[#ff4d1f] opacity-0 hidden md:block"></span>
+            <i data-lucide="wallet" class="w-[18px] h-[18px]"></i><span class="hidden md:inline">Expenses</span>
+        </button>
+        <button onclick="showTab('banks')" data-tab="banks" class="nav-btn w-full relative flex items-center justify-center md:justify-start gap-3 px-3 py-2.5 rounded-xl transition-all font-semibold text-slate-400 hover:text-white hover:bg-white/5 text-[13px]">
+            <span class="nav-bar absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-[#ff4d1f] opacity-0 hidden md:block"></span>
+            <i data-lucide="landmark" class="w-[18px] h-[18px]"></i><span class="hidden md:inline">Banks</span>
+        </button>
+    </nav>
+
+    <div class="hidden md:block mt-auto w-full bg-gradient-to-br from-[#1a1b1f] to-[#131417] p-4 rounded-2xl border border-[#232429]">
+        <p class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Live Sync</p>
+        <div class="flex items-center gap-2 mt-1"><span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span><span class="text-xs text-slate-300 font-semibold">Secure · Firestore</span></div>
+    </div>
+</aside>
+
+<!-- ============ MAIN ============ -->
+<main class="ml-[72px] md:ml-[240px] min-h-screen">
+
+    <!-- TOPBAR -->
+    <header class="no-print sticky top-0 z-40 bg-[#0a0a0c]/90 backdrop-blur border-b border-[#1e1f24] px-4 md:px-8 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <button class="w-8 h-8 rounded-full bg-[#1a1b1f] border border-[#26272c] flex items-center justify-center text-slate-400 hover:text-white"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+            <button class="w-8 h-8 rounded-full bg-[#1a1b1f] border border-[#26272c] flex items-center justify-center text-slate-400 hover:text-white"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+            <div class="hidden sm:flex items-center gap-1.5 text-[13px] font-medium text-slate-500 ml-2">
+                <span>Mujahid Fabrics</span><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i><span id="crumb-tab" class="text-white font-semibold">Overview</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 md:gap-3">
+            <div class="hidden md:block text-right mr-2">
+                <p id="live-clock" class="text-sm font-bold text-white leading-none"></p>
+                <p id="live-date" class="text-[10px] text-slate-500 font-semibold mt-0.5"></p>
+            </div>
+            <button class="w-9 h-9 rounded-full bg-[#1a1b1f] border border-[#26272c] flex items-center justify-center text-slate-400 hover:text-white"><i data-lucide="help-circle" class="w-4 h-4"></i></button>
+            <button class="hidden sm:flex w-9 h-9 rounded-full bg-[#1a1b1f] border border-[#26272c] items-center justify-center text-slate-400 hover:text-white"><i data-lucide="mail" class="w-4 h-4"></i></button>
+            <button class="hidden sm:flex w-9 h-9 rounded-full bg-[#1a1b1f] border border-[#26272c] items-center justify-center text-slate-400 hover:text-white"><i data-lucide="bell" class="w-4 h-4"></i></button>
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-rose-600 flex items-center justify-center text-white text-[11px] font-black">MF</div>
+            <button onclick="window.print()" class="bg-[#ff4d1f] hover:bg-[#ff5f33] text-white font-bold px-3 md:px-4 py-2 rounded-full flex items-center gap-1.5 text-[13px] shadow-lg shadow-orange-900/30"><i data-lucide="share-2" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Share</span></button>
+        </div>
+    </header>
+
+    <div class="p-4 md:p-8">
+
+    <!-- ===================== OVERVIEW ===================== -->
+    <section id="overview" class="tab-content active">
+        <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
+            <div><h2 class="text-2xl md:text-3xl font-extrabold text-white">Overview</h2><p class="text-slate-500 text-sm font-medium">Here is the summary of overall data</p></div>
+            <div class="flex items-center gap-2">
+                <select id="ov-period" onchange="renderOverview()" class="bg-[#1a1b1f] border border-[#26272c] text-slate-200 text-[13px] font-semibold px-3 py-2 rounded-full outline-none">
+                    <option value="today">Today</option>
+                    <option value="month" selected>This Month</option>
+                    <option value="all">All Time</option>
+                </select>
+                <button onclick="document.getElementById('ov-period').value='month'; renderOverview();" class="bg-[#1a1b1f] border border-[#26272c] text-slate-300 font-semibold px-3 py-2 rounded-full text-[13px] flex items-center gap-1.5 hover:text-white"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Reset</span></button>
+            </div>
+        </div>
+
+        <!-- Top stat cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+            <div class="rounded-3xl p-5 bg-gradient-to-br from-[#ff8a3d] to-[#ff4519] text-white shadow-xl shadow-orange-900/20">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center"><i data-lucide="wallet" class="w-5 h-5"></i></div>
+                        <div><p class="font-bold text-sm">My Balance</p><p class="text-white/70 text-[11px]">Revenue — selected period</p></div>
+                    </div>
+                    <i data-lucide="more-horizontal" class="w-4 h-4 text-white/60"></i>
+                </div>
+                <p id="ov-balance" class="text-3xl font-black mt-5">₨ 0</p>
+                <div class="flex items-center justify-between mt-4 pt-3 border-t border-white/20">
+                    <span class="text-[11px] font-bold bg-white/20 px-2 py-1 rounded-full" id="ov-balance-count">0 sales</span>
+                    <button onclick="showTab('pos')" class="text-[11px] font-bold flex items-center gap-1">New sale <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+                </div>
+            </div>
+            <div class="rounded-3xl p-5 bg-[#17181c] border border-[#232429]">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-[#232429] text-slate-300 flex items-center justify-center"><i data-lucide="piggy-bank" class="w-5 h-5"></i></div>
+                        <div><p class="font-bold text-sm text-white">Total Sales</p><p class="text-slate-500 text-[11px]">Lifetime revenue</p></div>
+                    </div>
+                    <i data-lucide="more-horizontal" class="w-4 h-4 text-slate-600"></i>
+                </div>
+                <p id="ov-total-sales" class="text-3xl font-black mt-5 text-white">₨ 0</p>
+                <button onclick="showTab('ledger')" class="mt-4 pt-3 border-t border-[#232429] w-full text-left text-[12px] font-bold text-slate-400 hover:text-white flex items-center justify-between">View summary <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+            </div>
+            <div class="rounded-3xl p-5 bg-[#17181c] border border-[#232429]">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-[#232429] text-slate-300 flex items-center justify-center"><i data-lucide="trending-up" class="w-5 h-5"></i></div>
+                        <div><p class="font-bold text-sm text-white">Net Profit</p><p class="text-slate-500 text-[11px]">Revenue − expenses</p></div>
+                    </div>
+                    <i data-lucide="more-horizontal" class="w-4 h-4 text-slate-600"></i>
+                </div>
+                <p id="ov-net" class="text-3xl font-black mt-5 text-emerald-400">₨ 0</p>
+                <button onclick="showTab('banks')" class="mt-4 pt-3 border-t border-[#232429] w-full text-left text-[12px] font-bold text-slate-400 hover:text-white flex items-center justify-between">Analyze performance <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+            </div>
+        </div>
+
+        <!-- Wallet + Cash flow -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-5">
+            <div class="lg:col-span-5 bg-[#17181c] border border-[#232429] rounded-3xl p-5">
+                <div class="flex items-center justify-between mb-1">
+                    <div><h3 class="font-bold text-white text-[15px]">My Wallet</h3><p class="text-slate-500 text-[11px]">PKR accounts</p></div>
+                    <button onclick="showTab('banks')" class="bg-[#ff4d1f] hover:bg-[#ff5f33] text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Add New</button>
+                </div>
+                <div id="ov-wallet-grid" class="grid grid-cols-2 gap-3 mt-4"></div>
+            </div>
+            <div class="lg:col-span-7 bg-[#17181c] border border-[#232429] rounded-3xl p-5">
+                <div class="flex items-center justify-between mb-1">
+                    <div><h3 class="font-bold text-white text-[15px]">Cash Flow</h3><p id="ov-cashflow-total" class="text-2xl font-black text-white mt-1">₨ 0</p></div>
+                    <div class="flex bg-[#1a1b1f] border border-[#26272c] rounded-full p-1 text-[11px] font-bold">
+                        <button id="chart-monthly" onclick="setChartMode('monthly')" class="px-3 py-1.5 rounded-full bg-white text-slate-900">Monthly</button>
+                        <button id="chart-yearly" onclick="setChartMode('yearly')" class="px-3 py-1.5 rounded-full text-slate-400">Yearly</button>
+                    </div>
+                </div>
+                <div id="cash-chart" class="relative flex items-end gap-2 md:gap-4 h-52 mt-6 px-1"></div>
+            </div>
+        </div>
+
+        <!-- Recent activities -->
+        <div class="bg-[#17181c] border border-[#232429] rounded-3xl p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h3 class="font-bold text-white text-[15px]">Recent Activities</h3>
+                <div class="flex items-center gap-2">
+                    <div class="relative"><i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i><input id="ov-search" oninput="renderOverview()" placeholder="Search" class="bg-[#1a1b1f] border border-[#26272c] rounded-full pl-8 pr-3 py-1.5 text-[12px] text-slate-200 outline-none w-32 md:w-44" /></div>
+                    <button onclick="showTab('invoices')" class="bg-[#1a1b1f] border border-[#26272c] text-slate-300 text-[12px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1"><i data-lucide="filter" class="w-3.5 h-3.5"></i>Filter</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto custom-scroll">
+                <table class="w-full text-left text-[13px] min-w-[640px]">
+                    <thead><tr class="text-slate-500 text-[10px] uppercase font-bold border-b border-[#232429]">
+                        <th class="py-2 pr-2 w-6"><input type="checkbox" class="chk"></th>
+                        <th class="py-2 pr-2">Activity</th><th class="py-2 pr-2">Order ID</th><th class="py-2 pr-2">Date</th><th class="py-2 pr-2">Time</th><th class="py-2 pr-2">Price</th><th class="py-2 pr-2">Status</th>
+                    </tr></thead>
+                    <tbody id="ov-activities"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== BILLING / POS ===================== -->
+    <section id="pos" class="tab-content">
+        <div class="flex flex-wrap justify-between items-center mb-4">
+            <div><h2 class="text-2xl md:text-3xl font-extrabold text-white">New Sale</h2><p class="text-slate-500 text-sm font-medium">PKR · unit pricing · billing</p></div>
+        </div>
+
+        <div class="grid grid-cols-12 gap-4 md:gap-6">
+            <div class="col-span-12 md:col-span-8 space-y-4">
+                <div class="bg-[#17181c] border border-[#232429] p-3 md:p-4 rounded-3xl">
+                    <div class="relative"><i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4"></i>
+                    <input type="text" id="pos-search" oninput="filterInventory()" placeholder="Search fabric..." class="w-full pl-11 pr-4 py-3 bg-[#1c1d22] rounded-2xl border border-[#26272c] focus:border-[#ff4d1f] outline-none text-sm md:text-base font-medium text-white placeholder:text-slate-500" /></div>
+                </div>
+                <div id="pos-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3 h-[380px] md:h-[560px] overflow-y-auto pr-1 custom-scroll"></div>
+            </div>
+            <div class="col-span-12 md:col-span-4">
+                <div class="bg-[#17181c] border border-[#232429] rounded-3xl flex flex-col h-auto md:h-[760px] overflow-hidden">
+                    <div class="p-4 bg-[#1c1d22] border-b border-[#232429]"><h3 class="text-[15px] font-bold text-white flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4 text-[#ff4d1f]"></i> Order</h3></div>
+                    <div class="p-4 space-y-2.5">
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div><label class="text-[9px] font-black uppercase text-slate-500">Customer</label><input type="text" id="cust-name" placeholder="Walk-in" class="w-full mt-1 px-3 py-2.5 bg-[#1c1d22] border border-[#26272c] rounded-xl outline-none focus:border-[#ff4d1f] font-bold text-sm text-white placeholder:text-slate-600" /></div>
+                            <div><label class="text-[9px] font-black uppercase text-slate-500">Contact</label><input type="text" id="cust-contact" placeholder="Phone" class="w-full mt-1 px-3 py-2.5 bg-[#1c1d22] border border-[#26272c] rounded-xl outline-none focus:border-[#ff4d1f] font-bold text-sm text-white placeholder:text-slate-600" /></div>
+                        </div>
+                    </div>
+                    <div id="cart-list" class="flex-1 overflow-y-auto px-4 space-y-2 custom-scroll min-h-[110px]"></div>
+                    <div class="p-4 bg-[#1c1d22] border-t border-[#232429] space-y-2.5">
+                        <div class="flex justify-between font-medium text-slate-400 text-[13px]"><span>Subtotal</span><span id="pos-subtotal">₨ 0</span></div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div><label class="text-[9px] font-black uppercase text-slate-500">Discount (₨)</label><input type="number" id="pos-discount" value="0" min="0" oninput="renderCart()" class="w-full mt-1 px-3 py-2 bg-[#111214] border border-[#26272c] rounded-xl outline-none focus:border-[#ff4d1f] font-bold text-sm text-white" /></div>
+                            <div><label class="text-[9px] font-black uppercase text-slate-500">Tax (%)</label><input type="number" id="pos-tax" value="0" min="0" oninput="renderCart()" class="w-full mt-1 px-3 py-2 bg-[#111214] border border-[#26272c] rounded-xl outline-none focus:border-[#ff4d1f] font-bold text-sm text-white" /></div>
+                        </div>
+                        <div class="flex justify-between text-2xl font-black pt-2 border-t border-[#232429] text-white"><span>Total</span><span id="pos-total" class="text-[#ff5a2c]">₨ 0</span></div>
+                        <div class="flex items-center justify-between bg-[#111214] border border-[#26272c] rounded-xl px-3 py-2">
+                            <label class="text-[11px] font-bold text-slate-300 flex items-center gap-2"><input type="checkbox" id="pos-paidfull" class="chk" checked onchange="toggleCredit()"> Paid in full</label>
+                            <span class="text-[10px] text-slate-500 font-bold">Khata / credit supported</span>
+                        </div>
+                        <div id="pos-credit-row" class="hidden"><label class="text-[9px] font-black uppercase text-slate-500">Amount Received (₨)</label><input type="number" id="pos-paid" value="0" min="0" oninput="renderCart()" class="w-full mt-1 px-3 py-2.5 bg-[#111214] border border-[#26272c] rounded-xl outline-none focus:border-[#ff4d1f] font-bold text-sm text-white" /></div>
+                        <div id="pos-due-row" class="hidden flex justify-between text-sm font-bold text-red-400"><span>Due</span><span id="pos-due">₨ 0</span></div>
+                        <div><label class="text-[9px] font-black uppercase text-slate-500">Payment</label>
+                        <select id="payment-method" class="w-full mt-1 p-2.5 rounded-xl bg-[#111214] border border-[#26272c] font-bold outline-none focus:border-[#ff4d1f] text-sm text-white">
+                            <option value="Cash">Cash</option><option value="Bank Alfalah">Bank Alfalah</option><option value="HBL">HBL</option><option value="Meezan Bank">Meezan Bank</option><option value="UBL">UBL</option>
+                        </select></div>
+                        <button onclick="processCheckout()" class="w-full bg-[#ff4d1f] hover:bg-[#ff5f33] text-white font-black py-3.5 rounded-2xl shadow-xl shadow-orange-900/30 transition-all active:scale-95 flex items-center justify-center gap-2 text-[15px]"><i data-lucide="check-circle" class="w-5 h-5"></i><span>FINALIZE & PRINT</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== INVOICES ===================== -->
+    <section id="invoices" class="tab-content">
+        <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+            <div><h2 class="text-2xl md:text-3xl font-extrabold text-white">Invoices</h2><p class="text-slate-500 text-sm font-medium">Full billing history · credit tracking</p></div>
+            <div class="relative"><i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"></i><input id="inv-search" oninput="renderInvoicesTable()" placeholder="Search customer or invoice #" class="bg-[#1a1b1f] border border-[#26272c] rounded-full pl-9 pr-4 py-2 text-[13px] text-slate-200 outline-none w-56" /></div>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-4" id="inv-filters">
+            <button data-status="all" onclick="setInvFilter('all')" class="inv-filter-btn px-4 py-1.5 rounded-full text-[12px] font-bold bg-white text-slate-900">All</button>
+            <button data-status="Paid" onclick="setInvFilter('Paid')" class="inv-filter-btn px-4 py-1.5 rounded-full text-[12px] font-bold bg-[#1a1b1f] border border-[#26272c] text-slate-300">Paid</button>
+            <button data-status="Partial" onclick="setInvFilter('Partial')" class="inv-filter-btn px-4 py-1.5 rounded-full text-[12px] font-bold bg-[#1a1b1f] border border-[#26272c] text-slate-300">Partial</button>
+            <button data-status="Credit" onclick="setInvFilter('Credit')" class="inv-filter-btn px-4 py-1.5 rounded-full text-[12px] font-bold bg-[#1a1b1f] border border-[#26272c] text-slate-300">Credit</button>
+        </div>
+        <div class="bg-[#17181c] border border-[#232429] rounded-3xl overflow-x-auto custom-scroll">
+            <table class="w-full text-left text-[13px] min-w-[820px]">
+                <thead><tr class="text-slate-500 text-[10px] uppercase font-bold border-b border-[#232429]">
+                    <th class="p-4">Invoice #</th><th class="p-4">Customer</th><th class="p-4">Date</th><th class="p-4">Total</th><th class="p-4">Paid</th><th class="p-4">Due</th><th class="p-4">Status</th><th class="p-4">Payment</th><th class="p-4 text-right">Actions</th>
+                </tr></thead>
+                <tbody id="invoices-table"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ===================== STOCK ===================== -->
+    <section id="inventory" class="tab-content">
+        <div class="flex flex-wrap justify-between items-center mb-4">
+            <div><h2 class="text-2xl md:text-3xl font-extrabold text-white">Stock</h2><p class="text-slate-500 text-sm font-medium">Fabric inventory</p></div>
+            <button onclick="openModal('modal-inventory')" class="bg-[#ff4d1f] hover:bg-[#ff5f33] text-white px-4 py-2.5 rounded-2xl font-bold shadow-lg flex items-center text-sm gap-1.5"><i data-lucide="plus" class="w-4 h-4"></i> Add</button>
+        </div>
+        <div class="bg-[#17181c] border border-[#232429] rounded-3xl overflow-x-auto custom-scroll">
+            <table class="w-full text-left text-sm"><thead class="border-b border-[#232429]"><tr>
+                <th class="p-4 font-black uppercase text-slate-500 text-[10px]">Fabric</th><th class="p-4 text-center font-black uppercase text-slate-500 text-[10px]">Stock</th><th class="p-4 font-black uppercase text-slate-500 text-[10px]">Price</th><th class="p-4 font-black uppercase text-slate-500 text-[10px]">Status</th>
+            </tr></thead><tbody id="inventory-table"></tbody></table>
+        </div>
+    </section>
+
+    <!-- ===================== FINANCE ===================== -->
+    <section id="ledger" class="tab-content">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-4">Finance</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div class="bg-[#17181c] border border-[#232429] border-l-4 border-l-[#ff4d1f] p-4 rounded-2xl"><p class="text-slate-500 font-bold text-[9px] uppercase">Today Revenue</p><h3 id="stat-rev-today" class="text-xl font-black text-white">₨ 0</h3></div>
+            <div class="bg-[#17181c] border border-[#232429] border-l-4 border-l-red-500 p-4 rounded-2xl"><p class="text-slate-500 font-bold text-[9px] uppercase">Expenses</p><h3 id="stat-exp-total" class="text-xl font-black text-white">₨ 0</h3></div>
+            <div class="bg-[#17181c] border border-[#232429] border-l-4 border-l-blue-500 p-4 rounded-2xl"><p class="text-slate-500 font-bold text-[9px] uppercase">Total Sales</p><h3 id="stat-rev-all" class="text-xl font-black text-white">₨ 0</h3></div>
+            <div class="bg-gradient-to-br from-[#ff8a3d] to-[#ff4519] p-4 rounded-2xl text-white"><p class="text-white/80 font-bold text-[9px] uppercase">Net</p><h3 id="stat-net" class="text-xl font-black">₨ 0</h3></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-[#17181c] border border-[#232429] rounded-3xl p-5"><h4 class="font-black text-[15px] text-white mb-3">Recent Sales</h4><div id="history-sales" class="space-y-2.5"></div></div>
+            <div class="bg-[#17181c] border border-[#232429] rounded-3xl p-5"><h4 class="font-black text-[15px] text-white mb-3">Expense Log</h4><div id="history-expenses" class="space-y-2.5"></div></div>
+        </div>
+    </section>
+
+    <!-- ===================== EXPENSES ===================== -->
+    <section id="expenses" class="tab-content">
+        <div class="max-w-lg mx-auto mt-6">
+            <div class="bg-[#17181c] border border-[#232429] p-6 md:p-10 rounded-[32px]">
+                <div class="flex items-center gap-4 mb-6"><div class="w-12 h-12 bg-red-500/10 text-red-400 rounded-2xl flex items-center justify-center"><i data-lucide="minus-circle"></i></div><div><h2 class="text-2xl font-black text-white">Record Expense</h2><p class="text-slate-500 text-sm">audit ready</p></div></div>
+                <form id="form-expense" class="space-y-4">
+                    <div><label class="text-[10px] font-black uppercase text-slate-500">Description</label><input type="text" id="exp-desc" required placeholder="e.g. Rent" class="w-full mt-1 p-4 bg-[#1c1d22] border border-[#26272c] rounded-2xl outline-none focus:border-red-500 font-bold text-sm text-white placeholder:text-slate-600" /></div>
+                    <div class="grid grid-cols-2 gap-3"><div><label class="text-[10px] font-black uppercase text-slate-500">Amount</label><input type="number" id="exp-amt" required placeholder="0" class="w-full mt-1 p-4 bg-[#1c1d22] border border-[#26272c] rounded-2xl outline-none focus:border-red-500 font-bold text-red-400 text-lg" /></div>
+                    <div><label class="text-[10px] font-black uppercase text-slate-500">Category</label><select id="exp-cat" class="w-full mt-1 p-4 bg-[#1c1d22] border border-[#26272c] rounded-2xl outline-none focus:border-red-500 font-bold text-sm text-white"><option>Utilities</option><option>Rent</option><option>Maintenance</option><option>Staff</option><option>Misc</option></select></div></div>
+                    <button type="submit" class="w-full bg-white text-slate-900 font-black py-4 rounded-2xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"><i data-lucide="save"></i><span>SAVE</span></button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== BANKS ===================== -->
+    <section id="banks" class="tab-content">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-4">Accounts & Daily Report</h2>
+        <div id="bank-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8"></div>
+        <div class="bg-[#17181c] border border-[#232429] p-5 md:p-8 rounded-3xl">
+            <h3 class="font-black text-lg text-white mb-4 flex items-center gap-2"><i data-lucide="calendar-days" class="w-4 h-4 text-[#ff4d1f]"></i> Daily Bank / Cash Breakdown</h3>
+            <div id="daily-bank-report" class="space-y-3 max-h-72 overflow-y-auto custom-scroll"></div>
+        </div>
+    </section>
+
+    </div>
+</main>
+
+<!-- MODAL: Add Fabric -->
+<div id="modal-inventory" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] hidden items-center justify-center p-3">
+    <div class="bg-[#17181c] border border-[#232429] w-full max-w-md rounded-[32px] p-6 md:p-10 relative">
+        <button onclick="closeModal('modal-inventory')" class="absolute top-4 right-4 text-slate-500 hover:text-white"><i data-lucide="x"></i></button>
+        <h3 class="text-2xl font-black text-white mb-4">Add Fabric</h3>
+        <form id="form-inventory" class="space-y-3">
+            <input type="text" id="inv-name" placeholder="Fabric name" class="w-full p-4 bg-[#1c1d22] border border-[#26272c] rounded-2xl font-bold text-white placeholder:text-slate-600" required />
+            <div class="grid grid-cols-2 gap-3"><input type="number" id="inv-stock" placeholder="Meters" class="w-full p-4 bg-[#1c1d22] border border-[#26272c] rounded-2xl font-bold text-white placeholder:text-slate-600" required /><select id="inv-unit" class="w-full p-4 bg-[#1c1d22] border border-[#26272c] rounded-2xl font-bold text-white"><option>Meter</option><option>Foot</option></select></div>
+            <div class="grid grid-cols-2 gap-3"><input type="number" id="inv-cost" placeholder="Cost" class="w-full p-4 bg-[#1c1d22] border border-[#26272c] rounded-2xl font-bold text-white placeholder:text-slate-600" required /><input type="number" id="inv-sale" placeholder="Sale Price" class="w-full p-4 bg-[#1c1d22] border border-[#26272c] rounded-2xl font-bold text-white placeholder:text-slate-600" required /></div>
+            <button type="submit" class="w-full bg-[#ff4d1f] hover:bg-[#ff5f33] text-white font-black py-5 rounded-2xl">ADD</button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: View Invoice -->
+<div id="modal-view-invoice" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] hidden items-center justify-center p-3">
+    <div class="bg-[#17181c] border border-[#232429] w-full max-w-md rounded-[32px] p-6 md:p-8 relative max-h-[85vh] overflow-y-auto custom-scroll">
+        <button onclick="closeModal('modal-view-invoice')" class="absolute top-4 right-4 text-slate-500 hover:text-white"><i data-lucide="x"></i></button>
+        <div id="view-invoice-body"></div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-6 right-6 flex items-center gap-3 bg-[#17181c] border border-[#232429] text-white px-6 py-4 rounded-3xl shadow-2xl transition-all transform translate-y-40 opacity-0 z-[200] text-sm no-print"><div class="w-8 h-8 bg-[#ff4d1f] rounded-full flex items-center justify-center"><i data-lucide="check" class="w-4 h-4"></i></div><p id="toast-msg" class="font-bold"></p></div>
+
+<!-- PRINT RECEIPT — attractive single-page invoice -->
+<div id="print-receipt" class="print-area bg-white text-slate-900" style="width:100%;max-width:190mm;margin:0 auto;padding:6mm 8mm;">
+
+    <!-- Header: logo + business + invoice meta -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #ff4d1f;padding-bottom:12px;margin-bottom:16px;">
+        <div style="display:flex;gap:12px;align-items:center;">
+            <div style="width:54px;height:54px;min-width:54px;border-radius:16px;background:linear-gradient(135deg,#ff8a3d,#ff4519);display:flex;align-items:center;justify-content:center;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            </div>
+            <div>
+                <h1 style="font-size:23px;font-weight:900;font-style:italic;letter-spacing:-0.5px;margin:0;line-height:1;">MUJAHID FABRICS</h1>
+                <p style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:#64748b;margin:4px 0 0;">Premium Fabrics &amp; Textiles</p>
+                <p style="font-size:10.5px;color:#334155;margin:5px 0 0;font-weight:600;">Main Bazaar, Rawalpindi &nbsp;·&nbsp; ☎ <span id="p-phone">0300-0000000</span></p>
+            </div>
+        </div>
+        <div style="text-align:right;">
+            <p style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#ff4d1f;margin:0;">Invoice</p>
+            <p id="p-inv" style="font-size:16px;font-weight:900;margin:3px 0;"></p>
+            <p id="p-date" style="font-size:10px;color:#64748b;font-weight:600;margin:0;"></p>
+        </div>
+    </div>
+
+    <!-- Billed to / payment -->
+    <div style="display:flex;justify-content:space-between;margin-bottom:14px;">
+        <div>
+            <p style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;font-weight:700;margin:0 0 3px;">Billed To</p>
+            <p id="p-cust" style="font-size:13px;font-weight:800;margin:0;"></p>
+        </div>
+        <div style="text-align:right;">
+            <p style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;font-weight:700;margin:0 0 3px;">Payment Method</p>
+            <p id="p-method" style="font-size:13px;font-weight:800;margin:0;"></p>
+        </div>
+    </div>
+
+    <!-- Items -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+        <thead>
+            <tr style="background:#fff2ea;">
+                <th style="text-align:left;padding:8px;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#ff4d1f;border-bottom:2px solid #ff4d1f;">Item</th>
+                <th style="text-align:center;padding:8px;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#ff4d1f;border-bottom:2px solid #ff4d1f;">Qty</th>
+                <th style="text-align:right;padding:8px;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#ff4d1f;border-bottom:2px solid #ff4d1f;">Rate</th>
+                <th style="text-align:right;padding:8px;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#ff4d1f;border-bottom:2px solid #ff4d1f;">Amount</th>
+            </tr>
+        </thead>
+        <tbody id="p-items"></tbody>
+    </table>
+
+    <!-- Totals -->
+    <div style="display:flex;justify-content:flex-end;">
+        <div style="width:230px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;color:#475569;font-weight:600;"><span>Subtotal</span><span id="p-subtotal"></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;color:#475569;font-weight:600;"><span>Discount</span><span id="p-discount"></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0 8px;color:#475569;font-weight:600;border-bottom:1.5px solid #e2e8f0;"><span>Tax</span><span id="p-tax"></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:900;padding:8px 0;"><span>Total</span><span id="p-total" style="color:#ff4d1f;"></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;font-weight:700;color:#16a34a;"><span id="p-paid"></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;font-weight:700;color:#dc2626;"><span id="p-due"></span></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="margin-top:22px;padding-top:12px;border-top:1.5px dashed #cbd5e1;display:flex;justify-content:space-between;align-items:flex-end;">
+        <div>
+            <p style="font-size:9px;font-weight:700;color:#94a3b8;margin:0;">For queries call</p>
+            <p style="font-size:12px;font-weight:800;margin:3px 0 0;">☎ <span id="p-phone2">0300-0000000</span></p>
+        </div>
+        <div style="text-align:center;">
+            <p style="font-size:9.5px;text-transform:uppercase;letter-spacing:1.5px;font-weight:800;color:#0f172a;margin:0;">Thank you for your business</p>
+            <p style="font-size:8px;color:#94a3b8;margin:3px 0 0;">Goods once sold will not be taken back or exchanged</p>
+        </div>
+    </div>
+</div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, increment, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyD1GfBZWyn-AXBYOMcYE8BwoH82RpQIrZU",
+    authDomain: "mujahid-fabrics.firebaseapp.com",
+    projectId: "mujahid-fabrics",
+    storageBucket: "mujahid-fabrics.firebasestorage.app",
+    messagingSenderId: "705157915398",
+    appId: "1:705157915398:web:2a89fb8cea8c8429f13487"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let inventory = [];
+let cart = [];
+let invoices = [];
+let expenses = [];
+let invFilter = 'all';
+let chartMode = 'monthly';
+
+// Edit these to match your shop — used on every printed invoice
+const BUSINESS = { name: "MUJAHID FABRICS", tagline: "Premium Fabrics & Textiles", address: "Main Bazaar, Rawalpindi", phone: "0300-0000000" };
+
+const fmt = n => '₨ ' + Math.round(n || 0).toLocaleString('en-PK');
+const BANKS = ["Cash", "Bank Alfalah", "HBL", "Meezan Bank", "UBL"];
+const BANK_ICONS = { "Cash": "banknote", "Bank Alfalah": "landmark", "HBL": "landmark", "Meezan Bank": "landmark", "UBL": "landmark" };
+
+// ---------- UI helpers ----------
+window.showTab = (id) => {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(l => l.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    const btn = document.querySelector(`[data-tab="${id}"]`);
+    if (btn) btn.classList.add('active');
+    const labels = { overview: 'Overview', pos: 'Billing', invoices: 'Invoices', inventory: 'Stock', ledger: 'Finance', expenses: 'Expenses', banks: 'Banks' };
+    document.getElementById('crumb-tab').innerText = labels[id] || id;
+    lucide.createIcons();
+};
+window.openModal = (id) => document.getElementById(id).style.display = 'flex';
+window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.remove('translate-y-40','opacity-0'); setTimeout(() => t.classList.add('translate-y-40','opacity-0'), 2800); }
+
+// ---------- Inventory ----------
+onSnapshot(query(collection(db, "mujahid_inventory"), orderBy("timestamp", "desc")), (snap) => {
+    inventory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderInventoryTable();
+    renderPOSGrid();
+});
+function renderInventoryTable() {
+    const tbody = document.getElementById('inventory-table');
+    tbody.innerHTML = inventory.map(item => `<tr class="border-b border-[#1e1f24] hover:bg-white/5"><td class="p-4"><div class="font-black text-white">${item.name}</div><div class="text-[9px] text-slate-500 uppercase">${item.unit}</div></td><td class="p-4 text-center"><span class="text-lg font-mono font-bold ${item.stock < 50 ? 'text-red-400' : 'text-slate-200'}">${item.stock}</span></td><td class="p-4 font-bold text-slate-200">${fmt(item.salePrice)}</td><td class="p-4"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase ${item.stock < 50 ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}">${item.stock < 50 ? 'Low' : 'Good'}</span></td></tr>`).join('');
+    lucide.createIcons();
+}
+function renderPOSGrid(filter = '') {
+    const grid = document.getElementById('pos-grid');
+    const items = inventory.filter(i => i.name.toLowerCase().includes(filter.toLowerCase()));
+    grid.innerHTML = items.map(item => `<div onclick="addToCart('${item.id}')" class="bg-[#17181c] p-4 rounded-2xl border border-[#232429] hover:border-[#ff4d1f] cursor-pointer transition-all group"><div class="flex justify-between"><span class="bg-[#ff4d1f]/10 text-[#ff7a45] text-[9px] font-black px-2 py-1 rounded-lg">${fmt(item.salePrice)}</span><i data-lucide="plus-circle" class="w-4 h-4 text-slate-700 group-hover:text-[#ff4d1f]"></i></div><p class="font-black text-sm mt-2 text-white">${item.name}</p><p class="text-[10px] text-slate-500 font-bold">${item.stock} left</p></div>`).join('');
+    lucide.createIcons();
+}
+window.filterInventory = () => renderPOSGrid(document.getElementById('pos-search').value);
+
+// ---------- Cart ----------
+window.addToCart = (id) => { const item = inventory.find(i => i.id === id); const inCart = cart.find(i => i.id === id); if (inCart) inCart.qty += 1; else cart.push({...item, qty: 1}); renderCart(); };
+window.updateQty = (id, change) => { const item = cart.find(i => i.id === id); item.qty += change; if (item.qty <= 0) cart = cart.filter(i => i.id !== id); renderCart(); };
+window.toggleCredit = () => { const full = document.getElementById('pos-paidfull').checked; document.getElementById('pos-credit-row').classList.toggle('hidden', full); renderCart(); };
+
+function cartTotals() {
+    const subtotal = cart.reduce((a, i) => a + (i.salePrice * i.qty), 0);
+    const discount = parseFloat(document.getElementById('pos-discount').value) || 0;
+    const taxPct = parseFloat(document.getElementById('pos-tax').value) || 0;
+    const taxed = Math.max(subtotal - discount, 0);
+    const tax = taxed * (taxPct / 100);
+    const total = taxed + tax;
+    const paidFull = document.getElementById('pos-paidfull').checked;
+    let paid = total;
+    if (!paidFull) paid = parseFloat(document.getElementById('pos-paid').value) || 0;
+    const due = Math.max(total - paid, 0);
+    return { subtotal, discount, taxPct, tax, total, paid, due, paidFull };
+}
+
+function renderCart() {
+    const list = document.getElementById('cart-list');
+    if (cart.length === 0) {
+        list.innerHTML = `<div class="text-center py-6 opacity-30"><i data-lucide="shopping-bag" class="mx-auto w-10 h-10 text-white"></i><p class="font-bold text-sm text-white">Empty</p></div>`;
+        document.getElementById('pos-subtotal').innerText = fmt(0);
+        document.getElementById('pos-total').innerText = fmt(0);
+        document.getElementById('pos-due-row').classList.add('hidden');
+        lucide.createIcons(); return;
+    }
+    list.innerHTML = cart.map(item => `<div class="bg-[#1c1d22] border border-[#26272c] p-3 rounded-2xl flex justify-between items-center"><div class="flex-1"><p class="font-black text-sm text-white">${item.name}</p><p class="text-[#ff7a45] font-bold text-xs">${fmt(item.salePrice)}</p></div><div class="flex items-center gap-2 bg-[#111214] rounded-xl px-2 py-1"><button onclick="updateQty('${item.id}', -0.5)" class="text-slate-500 hover:text-red-400 font-bold text-lg">−</button><span class="font-black w-8 text-center text-white">${item.qty}</span><button onclick="updateQty('${item.id}', 0.5)" class="text-slate-500 hover:text-emerald-400 font-bold text-lg">+</button></div><div class="text-right ml-2 min-w-[60px]"><p class="font-black text-sm text-white">${fmt(item.salePrice * item.qty)}</p></div></div>`).join('');
+
+    const t = cartTotals();
+    document.getElementById('pos-subtotal').innerText = fmt(t.subtotal);
+    document.getElementById('pos-total').innerText = fmt(t.total);
+    if (!t.paidFull) {
+        document.getElementById('pos-due-row').classList.remove('hidden');
+        document.getElementById('pos-due').innerText = fmt(t.due);
+    } else {
+        document.getElementById('pos-due-row').classList.add('hidden');
+    }
+    lucide.createIcons();
+}
+
+// ---------- Checkout ----------
+window.processCheckout = async () => {
+    if (cart.length === 0) return alert("Add items");
+    const customer = document.getElementById('cust-name').value || "Walk-in";
+    const contact = document.getElementById('cust-contact').value || "";
+    const method = document.getElementById('payment-method').value;
+    const t = cartTotals();
+    const status = t.due <= 0 ? 'Paid' : (t.paid > 0 ? 'Partial' : 'Credit');
+    const invoiceNo = 'INV-' + String(invoices.length + 1).padStart(6, '0');
+    try {
+        const batch = writeBatch(db);
+        const invRef = doc(collection(db, "mujahid_invoices"));
+        batch.set(invRef, {
+            invoiceNo, customer, contact, items: cart,
+            subtotal: t.subtotal, discount: t.discount, taxPct: t.taxPct, tax: t.tax,
+            total: t.total, amountPaid: t.paid, due: t.due, status,
+            paymentMethod: method, timestamp: serverTimestamp()
+        });
+        cart.forEach(item => { const ref = doc(db, "mujahid_inventory", item.id); batch.update(ref, { stock: increment(-item.qty) }); });
+        await batch.commit();
+
+        fillPrintReceipt({ invoiceNo, customer, contact, items: cart, subtotal: t.subtotal, discount: t.discount, tax: t.tax, total: t.total, amountPaid: t.paid, due: t.due, paymentMethod: method, date: new Date().toLocaleString() });
+        window.print();
+
+        cart = [];
+        document.getElementById('cust-name').value = '';
+        document.getElementById('cust-contact').value = '';
+        document.getElementById('pos-discount').value = 0;
+        document.getElementById('pos-tax').value = 0;
+        document.getElementById('pos-paid').value = 0;
+        document.getElementById('pos-paidfull').checked = true;
+        document.getElementById('pos-credit-row').classList.add('hidden');
+        renderCart();
+        showToast(`✅ ${invoiceNo} saved & stock updated`);
+    } catch (e) { console.error(e); alert("Error"); }
+};
+
+function fillPrintReceipt(inv) {
+    document.getElementById('p-phone').innerText = BUSINESS.phone;
+    document.getElementById('p-phone2').innerText = BUSINESS.phone;
+    document.getElementById('p-inv').innerText = inv.invoiceNo;
+    document.getElementById('p-date').innerText = inv.date;
+    document.getElementById('p-cust').innerHTML = `${inv.customer} ${inv.contact ? '· ' + inv.contact : ''}`;
+    document.getElementById('p-items').innerHTML = inv.items.map((i, idx) => `<tr style="background:${idx % 2 === 0 ? '#ffffff' : '#fafafa'};"><td style="padding:7px 8px;font-size:11.5px;font-weight:700;border-bottom:1px solid #f1f5f9;">${i.name}</td><td style="padding:7px 8px;font-size:11.5px;text-align:center;border-bottom:1px solid #f1f5f9;">${i.qty} ${i.unit || ''}</td><td style="padding:7px 8px;font-size:11.5px;text-align:right;border-bottom:1px solid #f1f5f9;">${fmt(i.salePrice)}</td><td style="padding:7px 8px;font-size:11.5px;text-align:right;font-weight:800;border-bottom:1px solid #f1f5f9;">${fmt(i.salePrice * i.qty)}</td></tr>`).join('');
+    document.getElementById('p-subtotal').innerText = fmt(inv.subtotal);
+    document.getElementById('p-discount').innerText = '- ' + fmt(inv.discount || 0);
+    document.getElementById('p-tax').innerText = '+ ' + fmt(inv.tax || 0);
+    document.getElementById('p-total').innerText = fmt(inv.total);
+    document.getElementById('p-paid').innerText = `Paid: ${fmt(inv.amountPaid)}`;
+    document.getElementById('p-due').innerText = inv.due > 0 ? `Due: ${fmt(inv.due)}` : '';
+    document.getElementById('p-method').innerText = inv.paymentMethod;
+}
+
+window.reprintInvoice = (id) => {
+    const inv = invoices.find(i => i.id === id);
+    if (!inv) return;
+    fillPrintReceipt({ invoiceNo: inv.invoiceNo || id, customer: inv.customer, contact: inv.contact, items: inv.items, subtotal: inv.subtotal ?? inv.total, discount: inv.discount || 0, tax: inv.tax || 0, total: inv.total, amountPaid: inv.amountPaid ?? inv.total, due: inv.due || 0, paymentMethod: inv.paymentMethod, date: inv.timestamp?.toDate?.()?.toLocaleString?.() || '' });
+    window.print();
+};
+
+window.markPaid = async (id) => {
+    const inv = invoices.find(i => i.id === id);
+    if (!inv) return;
+    await updateDoc(doc(db, "mujahid_invoices", id), { amountPaid: inv.total, due: 0, status: 'Paid' });
+    showToast('Marked as fully paid');
+};
+
+window.deleteInvoice = async (id) => {
+    if (!confirm('Delete this invoice permanently? Stock will not be restored automatically.')) return;
+    await deleteDoc(doc(db, "mujahid_invoices", id));
+    showToast('Invoice deleted');
+};
+
+window.viewInvoice = (id) => {
+    const inv = invoices.find(i => i.id === id);
+    if (!inv) return;
+    const badge = statusBadge(inv.status || 'Paid');
+    document.getElementById('view-invoice-body').innerHTML = `
+        <h3 class="text-xl font-black text-white mb-1">${inv.invoiceNo || id}</h3>
+        <p class="text-slate-500 text-sm mb-4">${inv.timestamp?.toDate?.()?.toLocaleString?.() || ''}</p>
+        <div class="flex justify-between items-center mb-4"><span class="text-slate-400 text-sm font-bold">${inv.customer} ${inv.contact ? '· ' + inv.contact : ''}</span>${badge}</div>
+        <div class="bg-[#1c1d22] border border-[#26272c] rounded-2xl p-3 space-y-1 mb-4">${(inv.items||[]).map(i => `<div class="flex justify-between text-sm text-slate-200"><span>${i.name} × ${i.qty}</span><span class="font-bold">${fmt(i.salePrice*i.qty)}</span></div>`).join('')}</div>
+        <div class="space-y-1 text-sm text-slate-300">
+            <div class="flex justify-between"><span>Subtotal</span><span>${fmt(inv.subtotal ?? inv.total)}</span></div>
+            <div class="flex justify-between"><span>Discount</span><span>- ${fmt(inv.discount||0)}</span></div>
+            <div class="flex justify-between"><span>Tax</span><span>+ ${fmt(inv.tax||0)}</span></div>
+            <div class="flex justify-between text-white font-black text-lg border-t border-[#26272c] pt-2 mt-1"><span>Total</span><span>${fmt(inv.total)}</span></div>
+            <div class="flex justify-between"><span>Paid</span><span>${fmt(inv.amountPaid ?? inv.total)}</span></div>
+            <div class="flex justify-between text-red-400 font-bold"><span>Due</span><span>${fmt(inv.due||0)}</span></div>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="reprintInvoice('${inv.id}')" class="flex-1 bg-[#ff4d1f] hover:bg-[#ff5f33] text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-1.5"><i data-lucide="printer" class="w-4 h-4"></i>Print</button>
+            ${(inv.due||0) > 0 ? `<button onclick="markPaid('${inv.id}')" class="flex-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold py-2.5 rounded-xl text-sm">Mark Paid</button>` : ''}
+        </div>`;
+    openModal('modal-view-invoice');
+    lucide.createIcons();
+};
+
+function statusBadge(status) {
+    const map = { Paid: 'bg-emerald-500/10 text-emerald-400', Partial: 'bg-amber-500/10 text-amber-400', Credit: 'bg-red-500/10 text-red-400' };
+    return `<span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${map[status] || map.Paid}">${status}</span>`;
+}
+window.setInvFilter = (s) => {
+    invFilter = s;
+    document.querySelectorAll('.inv-filter-btn').forEach(b => {
+        const active = b.dataset.status === s;
+        b.className = 'inv-filter-btn px-4 py-1.5 rounded-full text-[12px] font-bold ' + (active ? 'bg-white text-slate-900' : 'bg-[#1a1b1f] border border-[#26272c] text-slate-300');
+    });
+    renderInvoicesTable();
+};
+
+function renderInvoicesTable() {
+    const search = (document.getElementById('inv-search')?.value || '').toLowerCase();
+    let rows = [...invoices].reverse();
+    if (invFilter !== 'all') rows = rows.filter(i => (i.status || 'Paid') === invFilter);
+    if (search) rows = rows.filter(i => (i.customer||'').toLowerCase().includes(search) || (i.invoiceNo||'').toLowerCase().includes(search));
+    document.getElementById('invoices-table').innerHTML = rows.map(inv => `
+        <tr class="border-b border-[#1e1f24] hover:bg-white/5">
+            <td class="p-4 font-mono font-bold text-slate-200">${inv.invoiceNo || '—'}</td>
+            <td class="p-4 font-bold text-white">${inv.customer}</td>
+            <td class="p-4 text-slate-400 text-[12px]">${inv.timestamp?.toDate?.()?.toLocaleDateString?.() || ''}</td>
+            <td class="p-4 font-bold text-slate-200">${fmt(inv.total)}</td>
+            <td class="p-4 text-emerald-400 font-bold">${fmt(inv.amountPaid ?? inv.total)}</td>
+            <td class="p-4 font-bold ${(inv.due||0) > 0 ? 'text-red-400' : 'text-slate-500'}">${fmt(inv.due||0)}</td>
+            <td class="p-4">${statusBadge(inv.status || 'Paid')}</td>
+            <td class="p-4 text-slate-400 text-[12px] font-bold">${inv.paymentMethod || ''}</td>
+            <td class="p-4"><div class="flex items-center justify-end gap-1.5">
+                <button onclick="viewInvoice('${inv.id}')" class="w-8 h-8 rounded-lg bg-[#1c1d22] border border-[#26272c] flex items-center justify-center text-slate-300 hover:text-white"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                <button onclick="reprintInvoice('${inv.id}')" class="w-8 h-8 rounded-lg bg-[#1c1d22] border border-[#26272c] flex items-center justify-center text-slate-300 hover:text-white"><i data-lucide="printer" class="w-3.5 h-3.5"></i></button>
+                <button onclick="deleteInvoice('${inv.id}')" class="w-8 h-8 rounded-lg bg-[#1c1d22] border border-[#26272c] flex items-center justify-center text-slate-400 hover:text-red-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            </div></td>
+        </tr>`).join('') || `<tr><td colspan="9" class="p-8 text-center text-slate-500 text-sm">No invoices yet</td></tr>`;
+    lucide.createIcons();
+}
+
+// ---------- Ledger + Overview + Banks (combined listener) ----------
+onSnapshot(collection(db, "mujahid_invoices"), (snap) => {
+    onSnapshot(collection(db, "mujahid_expenses"), (eSnap) => {
+        invoices = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.timestamp?.toMillis?.()||0) - (b.timestamp?.toMillis?.()||0));
+        expenses = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderLedger();
+        renderInvoicesTable();
+        renderOverview();
+    });
+});
+
+function renderLedger() {
+    let totalRev = 0, todayRev = 0, totalExp = 0;
+    const banks = {}; BANKS.forEach(b => banks[b] = 0);
+    const today = new Date().toDateString();
+    invoices.forEach(inv => {
+        totalRev += inv.total;
+        const d = inv.timestamp?.toDate?.()?.toDateString();
+        if (d === today) todayRev += inv.total;
+        if (banks.hasOwnProperty(inv.paymentMethod)) banks[inv.paymentMethod] += (inv.amountPaid ?? inv.total);
+    });
+    expenses.forEach(exp => { totalExp += exp.amount; banks["Cash"] -= exp.amount; });
+
+    document.getElementById('stat-rev-all').innerText = fmt(totalRev);
+    document.getElementById('stat-rev-today').innerText = fmt(todayRev);
+    document.getElementById('stat-exp-total').innerText = fmt(totalExp);
+    document.getElementById('stat-net').innerText = fmt(totalRev - totalExp);
+
+    document.getElementById('bank-grid').innerHTML = Object.keys(banks).map(b => `
+        <div class="bg-[#17181c] border border-[#232429] p-5 rounded-3xl flex items-center gap-4"><div class="w-12 h-12 ${b === 'Cash' ? 'bg-[#ff4d1f]/10 text-[#ff7a45]' : 'bg-white/5 text-slate-300'} rounded-2xl flex items-center justify-center"><i data-lucide="${BANK_ICONS[b]}" class="w-6 h-6"></i></div><div><p class="text-slate-500 font-bold text-[9px] uppercase">${b}</p><h4 class="text-xl font-black text-white">${fmt(banks[b])}</h4></div></div>
+    `).join('');
+
+    const dailyMap = {};
+    invoices.forEach(inv => {
+        const d = inv.timestamp?.toDate?.()?.toDateString() || 'unknown';
+        if (!dailyMap[d]) dailyMap[d] = {};
+        const m = inv.paymentMethod || 'Cash';
+        dailyMap[d][m] = (dailyMap[d][m] || 0) + (inv.amountPaid ?? inv.total);
+    });
+    const reportDiv = document.getElementById('daily-bank-report');
+    const sortedDates = Object.keys(dailyMap).sort((a,b) => new Date(b) - new Date(a));
+    reportDiv.innerHTML = sortedDates.slice(0, 20).map(date => {
+        const entries = dailyMap[date];
+        const lines = Object.entries(entries).map(([method, amt]) => `<span class="font-bold text-[#ff7a45]">${method}: ${fmt(amt)}</span>`).join(' · ');
+        return `<div class="flex justify-between items-center p-3 bg-[#1c1d22] rounded-2xl border border-[#26272c] flex-wrap gap-2"><span class="font-bold text-sm text-white">${date}</span><span class="text-sm text-slate-300">${lines}</span></div>`;
+    }).join('') || '<p class="text-slate-500 text-sm">No transactions yet</p>';
+
+    document.getElementById('history-sales').innerHTML = invoices.slice(-6).reverse().map(inv => `
+        <div class="flex justify-between items-center p-3 bg-[#1c1d22] rounded-2xl border border-[#26272c]"><div><p class="font-black text-sm text-white">${inv.customer}</p><p class="text-[9px] text-slate-500">${inv.timestamp?.toDate?.()?.toLocaleTimeString?.() || ''}</p></div><div class="text-right"><p class="text-[#ff7a45] font-black">${fmt(inv.total)}</p><p class="text-[8px] uppercase font-bold text-slate-500">${inv.paymentMethod}</p></div></div>
+    `).join('');
+    document.getElementById('history-expenses').innerHTML = expenses.slice(-6).reverse().map(exp => `
+        <div class="flex justify-between items-center p-3 bg-red-500/5 rounded-2xl border border-red-500/10"><div><p class="font-black text-sm text-white">${exp.description}</p><p class="text-[9px] text-slate-500">${exp.category}</p></div><p class="text-red-400 font-black">${fmt(exp.amount)}</p></div>
+    `).join('');
+    lucide.createIcons();
+}
+
+// ---------- Overview ----------
+function periodInvoices(period) {
+    const now = new Date();
+    return invoices.filter(inv => {
+        const d = inv.timestamp?.toDate?.();
+        if (!d) return period === 'all';
+        if (period === 'today') return d.toDateString() === now.toDateString();
+        if (period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        return true;
+    });
+}
+
+window.setChartMode = (mode) => {
+    chartMode = mode;
+    document.getElementById('chart-monthly').className = 'px-3 py-1.5 rounded-full ' + (mode === 'monthly' ? 'bg-white text-slate-900' : 'text-slate-400');
+    document.getElementById('chart-yearly').className = 'px-3 py-1.5 rounded-full ' + (mode === 'yearly' ? 'bg-white text-slate-900' : 'text-slate-400');
+    renderChart();
+};
+
+function renderChart() {
+    const el = document.getElementById('cash-chart');
+    let buckets = [];
+    if (chartMode === 'monthly') {
+        const now = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const label = d.toLocaleDateString(undefined, { month: 'short' });
+            const rev = invoices.filter(inv => { const t = inv.timestamp?.toDate?.(); return t && t.getMonth() === d.getMonth() && t.getFullYear() === d.getFullYear(); }).reduce((a,i) => a + i.total, 0);
+            buckets.push({ label, value: rev, key: d.toLocaleDateString() });
+        }
+    } else {
+        const now = new Date();
+        for (let i = 4; i >= 0; i--) {
+            const y = now.getFullYear() - i;
+            const rev = invoices.filter(inv => { const t = inv.timestamp?.toDate?.(); return t && t.getFullYear() === y; }).reduce((a,i) => a + i.total, 0);
+            buckets.push({ label: String(y), value: rev, key: String(y) });
+        }
+    }
+    const max = Math.max(...buckets.map(b => b.value), 1);
+    const peakIdx = buckets.reduce((mi, b, i, arr) => b.value > arr[mi].value ? i : mi, 0);
+
+    el.innerHTML = buckets.map((b, i) => {
+        const h = Math.max((b.value / max) * 100, 4);
+        const isPeak = i === peakIdx && b.value > 0;
+        return `<div class="relative flex-1 flex flex-col items-center justify-end h-full group">
+            ${isPeak ? `<div class="absolute -top-16 bg-[#1c1d22] border border-[#2a2b31] rounded-xl p-2.5 text-[10px] w-32 shadow-xl z-10">
+                <p class="text-slate-500 font-bold">${b.key}</p>
+                <p class="text-white font-bold mt-0.5">Cashflow <span class="float-right text-emerald-400">${fmt(b.value)}</span></p>
+            </div>` : ''}
+            <div class="bar-fill w-full max-w-[28px] rounded-t-lg ${isPeak ? 'bg-gradient-to-t from-[#ff4519] to-[#ffb088]' : 'bg-[#2a2b31] group-hover:bg-[#3a3b42]'}" style="height:${h}%"></div>
+            <span class="text-[10px] text-slate-500 font-bold mt-2">${b.label}</span>
+        </div>`;
+    }).join('');
+    lucide.createIcons();
+}
+
+function renderOverview() {
+    const period = document.getElementById('ov-period')?.value || 'month';
+    const rows = periodInvoices(period);
+    const revenue = rows.reduce((a,i) => a + i.total, 0);
+    const allRevenue = invoices.reduce((a,i) => a + i.total, 0);
+    const totalExp = expenses.reduce((a,e) => a + e.amount, 0);
+
+    document.getElementById('ov-balance').innerText = fmt(revenue);
+    document.getElementById('ov-balance-count').innerText = `${rows.length} sale${rows.length===1?'':'s'}`;
+    document.getElementById('ov-total-sales').innerText = fmt(allRevenue);
+    document.getElementById('ov-net').innerText = fmt(allRevenue - totalExp);
+
+    // wallet grid
+    const banks = {}; BANKS.forEach(b => banks[b] = 0);
+    invoices.forEach(inv => { if (banks.hasOwnProperty(inv.paymentMethod)) banks[inv.paymentMethod] += (inv.amountPaid ?? inv.total); });
+    banks["Cash"] -= totalExp;
+    document.getElementById('ov-wallet-grid').innerHTML = Object.keys(banks).map(b => `
+        <div class="bg-[#1c1d22] border border-[#26272c] rounded-2xl p-3.5">
+            <div class="flex items-center justify-between mb-3"><div class="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center"><i data-lucide="${BANK_ICONS[b]}" class="w-3.5 h-3.5 text-slate-300"></i></div><i data-lucide="more-vertical" class="w-3.5 h-3.5 text-slate-600"></i></div>
+            <p class="text-[11px] font-bold text-slate-400">${b}</p>
+            <p class="text-[15px] font-black text-white mt-0.5">${fmt(banks[b])}</p>
+            <span class="text-[9px] font-bold ${banks[b] > 0 ? 'text-emerald-400' : 'text-slate-600'}">${banks[b] > 0 ? 'Active' : 'Inactive'}</span>
+        </div>`).join('');
+
+    // cash flow total = revenue - expenses for period
+    document.getElementById('ov-cashflow-total').innerText = fmt(revenue - totalExp);
+    renderChart();
+
+    // recent activities
+    const search = (document.getElementById('ov-search')?.value || '').toLowerCase();
+    let recent = [...invoices].reverse().filter(inv => !search || (inv.customer||'').toLowerCase().includes(search) || (inv.invoiceNo||'').toLowerCase().includes(search)).slice(0, 8);
+    document.getElementById('ov-activities').innerHTML = recent.map(inv => {
+        const d = inv.timestamp?.toDate?.();
+        return `<tr class="border-b border-[#1e1f24] hover:bg-white/5 cursor-pointer" onclick="viewInvoice('${inv.id}')">
+            <td class="py-3 pr-2" onclick="event.stopPropagation()"><input type="checkbox" class="chk"></td>
+            <td class="py-3 pr-2"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-lg bg-[#ff4d1f]/10 text-[#ff7a45] flex items-center justify-center"><i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i></div><span class="font-bold text-white text-[13px]">${inv.customer}</span></div></td>
+            <td class="py-3 pr-2 font-mono text-slate-400 text-[12px]">${inv.invoiceNo || '—'}</td>
+            <td class="py-3 pr-2 text-slate-400 text-[12px]">${d ? d.toLocaleDateString() : ''}</td>
+            <td class="py-3 pr-2 text-slate-400 text-[12px]">${d ? d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''}</td>
+            <td class="py-3 pr-2 font-bold text-white text-[13px]">${fmt(inv.total)}</td>
+            <td class="py-3 pr-2">${statusBadge(inv.status || 'Paid')}</td>
+        </tr>`;
+    }).join('') || `<tr><td colspan="7" class="py-8 text-center text-slate-500 text-sm">No activity yet</td></tr>`;
+    lucide.createIcons();
+}
+
+// ---------- Forms ----------
+document.getElementById('form-inventory').onsubmit = async (e) => {
+    e.preventDefault();
+    await addDoc(collection(db, "mujahid_inventory"), { name: document.getElementById('inv-name').value, stock: parseFloat(document.getElementById('inv-stock').value), unit: document.getElementById('inv-unit').value, costPrice: parseFloat(document.getElementById('inv-cost').value), salePrice: parseFloat(document.getElementById('inv-sale').value), timestamp: serverTimestamp() });
+    closeModal('modal-inventory'); e.target.reset(); showToast("Fabric added");
+};
+document.getElementById('form-expense').onsubmit = async (e) => {
+    e.preventDefault();
+    await addDoc(collection(db, "mujahid_expenses"), { description: document.getElementById('exp-desc').value, amount: parseFloat(document.getElementById('exp-amt').value), category: document.getElementById('exp-cat').value, timestamp: serverTimestamp() });
+    e.target.reset(); showToast("Expense saved");
+};
+
+// ---------- Clock ----------
+setInterval(() => {
+    const now = new Date();
+    document.getElementById('live-clock').innerText = now.toLocaleTimeString();
+    document.getElementById('live-date').innerText = now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}, 1000);
+
+renderCart();
+renderChart();
+lucide.createIcons();
+</script>
+</body>
+</html>
