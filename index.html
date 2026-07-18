@@ -442,12 +442,12 @@ import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, upda
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD1GfBZWyn-AXBYOMcYE8BwoH82RpQIrZU",
-    authDomain: "mujahid-fabrics.firebaseapp.com",
-    projectId: "mujahid-fabrics",
-    storageBucket: "mujahid-fabrics.firebasestorage.app",
-    messagingSenderId: "705157915398",
-    appId: "1:705157915398:web:2a89fb8cea8c8429f13487"
+    apiKey: "AIzaSyAMR37KxvDiukGYqAm1So4RDhC71e_g1JQ",
+    authDomain: "mujahid-fabrics-80f52.firebaseapp.com",
+    projectId: "mujahid-fabrics-80f52",
+    storageBucket: "mujahid-fabrics-80f52.firebasestorage.app",
+    messagingSenderId: "702217347819",
+    appId: "1:702217347819:web:e3b41238e6746485d714ae"
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -486,7 +486,7 @@ function showToast(msg) { const t = document.getElementById('toast'); document.g
 signInAnonymously(auth).catch((err) => {
     console.error(err);
     setSyncStatus('error');
-    showToast('⚠️ Cannot connect — check Firestore rules / internet');
+    showToast('⚠️ ' + (err.code || err.message || 'Connection failed'));
 });
 
 onAuthStateChanged(auth, (user) => {
@@ -512,18 +512,22 @@ function startListeners() {
         inventory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         renderInventoryTable();
         renderPOSGrid();
-    }, (err) => { console.error(err); setSyncStatus('error'); showToast('⚠️ Sync error — data may not be shared'); });
+    }, (err) => { console.error(err); setSyncStatus('error'); showToast('⚠️ ' + (err.code || 'Sync error') + ' (inventory)'); });
 
-    // ---------- Ledger + Overview + Banks (combined listener) ----------
+    // ---------- Invoices (independent listener — do not nest another onSnapshot inside this) ----------
     onSnapshot(collection(db, "mujahid_invoices"), (snap) => {
-        onSnapshot(collection(db, "mujahid_expenses"), (eSnap) => {
-            invoices = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.timestamp?.toMillis?.()||0) - (b.timestamp?.toMillis?.()||0));
-            expenses = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderLedger();
-            renderInvoicesTable();
-            renderOverview();
-        }, (err) => { console.error(err); setSyncStatus('error'); });
-    }, (err) => { console.error(err); setSyncStatus('error'); showToast('⚠️ Sync error — data may not be shared'); });
+        invoices = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.timestamp?.toMillis?.()||0) - (b.timestamp?.toMillis?.()||0));
+        renderLedger();
+        renderInvoicesTable();
+        renderOverview();
+    }, (err) => { console.error(err); setSyncStatus('error'); showToast('⚠️ ' + (err.code || 'Sync error') + ' (invoices)'); });
+
+    // ---------- Expenses (independent listener) ----------
+    onSnapshot(collection(db, "mujahid_expenses"), (snap) => {
+        expenses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderLedger();
+        renderOverview();
+    }, (err) => { console.error(err); setSyncStatus('error'); showToast('⚠️ ' + (err.code || 'Sync error') + ' (expenses)'); });
 }
 function renderInventoryTable() {
     const tbody = document.getElementById('inventory-table');
