@@ -85,7 +85,7 @@ input[type=checkbox].chk { accent-color: #ff4d1f; }
 
     <div class="hidden md:block mt-auto w-full bg-gradient-to-br from-[#1a1b1f] to-[#131417] p-4 rounded-2xl border border-[#232429]">
         <p class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Live Sync</p>
-        <div class="flex items-center gap-2 mt-1"><span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span><span class="text-xs text-slate-300 font-semibold">Secure · Firestore</span></div>
+        <div class="flex items-center gap-2 mt-1"><span id="sync-dot" class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span><span id="sync-text" class="text-xs text-slate-300 font-semibold">Connecting…</span></div>
     </div>
 </aside>
 
@@ -439,6 +439,7 @@ input[type=checkbox].chk { accent-color: #ff4d1f; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, increment, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyD1GfBZWyn-AXBYOMcYE8BwoH82RpQIrZU",
@@ -450,6 +451,7 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 let inventory = [];
 let cart = [];
@@ -480,12 +482,49 @@ window.openModal = (id) => document.getElementById(id).style.display = 'flex';
 window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.remove('translate-y-40','opacity-0'); setTimeout(() => t.classList.add('translate-y-40','opacity-0'), 2800); }
 
-// ---------- Inventory ----------
-onSnapshot(query(collection(db, "mujahid_inventory"), orderBy("timestamp", "desc")), (snap) => {
-    inventory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderInventoryTable();
-    renderPOSGrid();
+// ---------- Shared connection (this is what makes data visible on every device/account) ----------
+signInAnonymously(auth).catch((err) => {
+    console.error(err);
+    setSyncStatus('error');
+    showToast('⚠️ Cannot connect — check Firestore rules / internet');
 });
+
+onAuthStateChanged(auth, (user) => {
+    if (user) { setSyncStatus('connected'); startListeners(); }
+});
+
+function setSyncStatus(state) {
+    const dot = document.getElementById('sync-dot');
+    const text = document.getElementById('sync-text');
+    if (!dot || !text) return;
+    if (state === 'connected') { dot.className = 'w-2 h-2 bg-emerald-500 rounded-full animate-pulse'; text.innerText = 'Synced · everyone sees this'; }
+    else if (state === 'error') { dot.className = 'w-2 h-2 bg-red-500 rounded-full'; text.innerText = 'Offline / blocked'; }
+    else { dot.className = 'w-2 h-2 bg-amber-500 rounded-full animate-pulse'; text.innerText = 'Connecting…'; }
+}
+
+let listenersStarted = false;
+function startListeners() {
+    if (listenersStarted) return;
+    listenersStarted = true;
+
+    // ---------- Inventory ----------
+    onSnapshot(query(collection(db, "mujahid_inventory"), orderBy("timestamp", "desc")), (snap) => {
+        inventory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderInventoryTable();
+        renderPOSGrid();
+    }, (err) => { console.error(err); setSyncStatus('error'); showToast('⚠️ Sync error — data may not be shared'); });
+
+    // ---------- Ledger + Overview + Banks (combined listener) ----------
+    onSnapshot(collection(db, "mujahid_invoices"), (snap) => {
+        onSnapshot(collection(db, "mujahid_expenses"), (eSnap) => {
+            invoices = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.timestamp?.toMillis?.()||0) - (b.timestamp?.toMillis?.()||0));
+            expenses = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderLedger();
+            renderInvoicesTable();
+            renderOverview();
+        }, (err) => { console.error(err); setSyncStatus('error'); });
+    }, (err) => { console.error(err); setSyncStatus('error'); showToast('⚠️ Sync error — data may not be shared'); });
+}
 function renderInventoryTable() {
     const tbody = document.getElementById('inventory-table');
     tbody.innerHTML = inventory.map(item => `<tr class="border-b border-[#1e1f24] hover:bg-white/5"><td class="p-4"><div class="font-black text-white">${item.name}</div><div class="text-[9px] text-slate-500 uppercase">${item.unit}</div></td><td class="p-4 text-center"><span class="text-lg font-mono font-bold ${item.stock < 50 ? 'text-red-400' : 'text-slate-200'}">${item.stock}</span></td><td class="p-4 font-bold text-slate-200">${fmt(item.salePrice)}</td><td class="p-4"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase ${item.stock < 50 ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}">${item.stock < 50 ? 'Low' : 'Good'}</span></td></tr>`).join('');
@@ -675,17 +714,6 @@ function renderInvoicesTable() {
         </tr>`).join('') || `<tr><td colspan="9" class="p-8 text-center text-slate-500 text-sm">No invoices yet</td></tr>`;
     lucide.createIcons();
 }
-
-// ---------- Ledger + Overview + Banks (combined listener) ----------
-onSnapshot(collection(db, "mujahid_invoices"), (snap) => {
-    onSnapshot(collection(db, "mujahid_expenses"), (eSnap) => {
-        invoices = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.timestamp?.toMillis?.()||0) - (b.timestamp?.toMillis?.()||0));
-        expenses = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderLedger();
-        renderInvoicesTable();
-        renderOverview();
-    });
-});
 
 function renderLedger() {
     let totalRev = 0, todayRev = 0, totalExp = 0;
